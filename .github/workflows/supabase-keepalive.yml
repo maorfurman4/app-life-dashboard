@@ -1,0 +1,13 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: "0 6 */4 * *"   # every 4 days — prevents Supabase free-tier auto-pause from inactivity
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase project
+        run: curl -sS -o /dev/null -w "HTTP %{http_code}\n" --max-time 15 "https://oglhuhnppdlekviodkjb.supabase.co/rest/v1/"
