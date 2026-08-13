@@ -103,7 +103,7 @@ export function BarcodeScanner({ open, onClose, onDetected, onProductFound }: Ba
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
       <div
         className="flex items-center justify-between p-4 bg-black/80 text-white"
-        style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}
+        style={{ paddingTop: "max(2.75rem, calc(env(safe-area-inset-top) + 0.75rem))" }}
       >
         <div className="flex items-center gap-2">
           <Camera className="h-5 w-5 text-nutrition" />
