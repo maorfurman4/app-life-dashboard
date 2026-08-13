@@ -336,25 +336,38 @@ export function AddMealDrawer({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="לדוגמה: חזה עוף 200 גרם, סלט ירקות"
-                className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-nutrition min-h-[44px]"
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-nutrition focus:ring-2 focus:ring-nutrition/20 transition-shadow min-h-[44px]"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "קלוריות", value: calories, set: setCalories },
-                { label: "חלבון (g)", value: protein, set: setProtein },
-                { label: "פחמימות (g)", value: carbs, set: setCarbs },
-                { label: "שומן (g)", value: fat, set: setFat },
-              ].map(({ label, value, set }) => (
+                { label: "קלוריות", value: calories, set: setCalories, mode: "numeric" as const, color: "text-emerald-500" },
+                { label: "חלבון (g)", value: protein, set: setProtein, mode: "decimal" as const, color: "text-blue-500" },
+                { label: "פחמימות (g)", value: carbs, set: setCarbs, mode: "decimal" as const, color: "text-amber-500" },
+                { label: "שומן (g)", value: fat, set: setFat, mode: "decimal" as const, color: "text-pink-500" },
+              ].map(({ label, value, set, mode, color }) => (
                 <div key={label}>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode={mode}
                     value={value}
-                    onChange={(e) => set(e.target.value)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      // allow digits and a single decimal point only — avoids mobile "number" input quirks
+                      const cleaned = mode === "numeric"
+                        ? raw.replace(/[^0-9]/g, "")
+                        : raw.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                      set(cleaned);
+                    }}
                     placeholder="0"
-                    className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-nutrition min-h-[44px]"
+                    className={`w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm font-semibold text-center ${color} placeholder:text-muted-foreground/50 placeholder:font-normal focus:outline-none focus:border-nutrition focus:ring-2 focus:ring-nutrition/20 transition-shadow min-h-[44px]`}
                     dir="ltr"
+                    autoComplete="off"
                   />
                 </div>
               ))}
