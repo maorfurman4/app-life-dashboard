@@ -121,6 +121,7 @@ export function usePayrollSettings() {
         harel_travel_pct: data.harel_travel_pct ?? DEFAULT_PAYROLL_SETTINGS.harel_travel_pct,
         extra_harel_pct: data.extra_harel_pct ?? DEFAULT_PAYROLL_SETTINGS.extra_harel_pct,
         income_sync_mode: (data.income_sync_mode as 'net' | 'bank') ?? DEFAULT_PAYROLL_SETTINGS.income_sync_mode,
+        overtime_enabled: data.overtime_enabled ?? DEFAULT_PAYROLL_SETTINGS.overtime_enabled,
       } satisfies PayrollSettings;
     },
   });

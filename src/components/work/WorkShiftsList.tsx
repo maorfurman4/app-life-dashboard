@@ -1,6 +1,6 @@
 import { Clock, Trash2, Edit3 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { SHIFT_LABELS } from "@/lib/payroll-engine";
+import { SHIFT_LABELS, isShiftShabbat } from "@/lib/payroll-engine";
 import { useDeleteShift } from "@/hooks/use-work-data";
 import type { ShiftRow } from "@/lib/payroll-engine";
 import { toast } from "sonner";
@@ -60,7 +60,7 @@ export function WorkShiftsList({ shifts, isLoading }: WorkShiftsListProps) {
                   <div className="min-w-0">
                     <p className="text-xs font-semibold truncate">
                       {SHIFT_LABELS[shift.type] || shift.type}
-                      {shift.is_shabbat_holiday && <span className="text-finance me-1">🕯️</span>}
+                      {isShiftShabbat(shift) && <span className="text-finance me-1">🕯️</span>}
                       {shift.has_briefing && <span className="text-work me-1">📋</span>}
                     </p>
                     <p className="text-[10px] text-muted-foreground">

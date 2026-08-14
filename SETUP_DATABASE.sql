@@ -76,6 +76,7 @@ ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS harel_savings_pct     
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS harel_study_pct          NUMERIC     DEFAULT 2.50;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS harel_travel_pct         NUMERIC     DEFAULT 5.00;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS extra_harel_pct          NUMERIC     DEFAULT 7.00;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS overtime_enabled         BOOLEAN     DEFAULT true;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS income_sync_mode         TEXT        DEFAULT 'net';
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS savings_goal_pct         NUMERIC     DEFAULT 35;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS hidden_modules           JSONB       DEFAULT '[]'::jsonb;

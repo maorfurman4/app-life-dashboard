@@ -22,6 +22,10 @@ export function SettingsWork() {
     }
   };
 
+  const toggleOvertime = (enabled: boolean) => {
+    setForm((prev) => ({ ...prev, overtime_enabled: enabled }));
+  };
+
   const handleSave = () => {
     saveSettings.mutate(form, {
       onSuccess: () => { haptics.success(); toast.success("הגדרות עבודה נשמרו"); },
@@ -88,6 +92,28 @@ export function SettingsWork() {
       <div className="space-y-3">
         <p className="text-xs text-white/40 font-medium uppercase tracking-widest">תעריפים</p>
         {rateFields.map((f) => <SectionRow key={f.key} label={f.label} fieldKey={f.key} unit={f.unit} />)}
+      </div>
+
+      <div className="space-y-3 border-t border-white/10 pt-3">
+        <p className="text-xs text-white/40 font-medium uppercase tracking-widest">שעות נוספות</p>
+        <div className="flex items-center justify-between gap-3">
+          <label className="text-sm text-white/50">חישוב אוטומטי (125% / 150%)</label>
+          <div className="grid grid-cols-2 gap-2 w-40">
+            {([{ value: true, label: "פעיל" }, { value: false, label: "כבוי" }] as const).map((opt) => (
+              <button key={String(opt.value)} onClick={() => toggleOvertime(opt.value)}
+                className={`px-3 py-2.5 rounded-none border transition-colors text-xs font-semibold min-h-[44px] ${
+                  form.overtime_enabled === opt.value
+                    ? "bg-white text-black border-white"
+                    : "bg-white/5 border-white/20 text-gray-300 hover:bg-white/10 hover:text-white"
+                }`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="text-[11px] text-white/30 leading-relaxed">
+          כשפעיל: שעה 9-10 במשמרת מחושבות ב-125% ושעה 11+ ב-150% מהתעריף (כולל תעריף שבת, אם רלוונטי). שבת מזוהה אוטומטית — כל משמרת שחלה בשבת עצמה, וכל משמרת לילה שמתחילה בליל שישי.
+        </p>
       </div>
 
       <div className="space-y-3 border-t border-white/10 pt-3">
