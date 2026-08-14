@@ -1090,6 +1090,9 @@ function SettingsTab({ settings }: { settings: PayrollSettings }) {
   const set = (k: keyof PayrollSettings, v: string) =>
     setVals(prev => ({ ...prev, [k]: k === "income_sync_mode" ? v : Number(v) }));
 
+  const setOvertimeEnabled = (enabled: boolean) =>
+    setVals(prev => ({ ...prev, overtime_enabled: enabled }));
+
   const handleSave = async () => {
     try {
       await saveSettings.mutateAsync(vals);
@@ -1116,6 +1119,29 @@ function SettingsTab({ settings }: { settings: PayrollSettings }) {
 
   return (
     <div className="px-4 pt-8 space-y-4 pb-8">
+      <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 space-y-3">
+        <p className="text-sm font-black text-white">שעות נוספות ⏱️</p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-white">חישוב אוטומטי (125% / 150%)</p>
+            <p className="text-[10px] text-white/40 mt-0.5 leading-relaxed">
+              שעה 9-10 במשמרת ב-125%, שעה 11+ ב-150%. שבת מזוהה אוטומטית.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 shrink-0 w-28">
+            {([{ value: true, label: "פעיל" }, { value: false, label: "כבוי" }] as const).map((opt) => (
+              <button key={String(opt.value)} onClick={() => setOvertimeEnabled(opt.value)}
+                className={`px-2 py-2 rounded-xl text-[11px] font-bold transition-colors ${
+                  vals.overtime_enabled === opt.value
+                    ? "bg-sky-500 text-white"
+                    : "bg-white/8 text-white/40 hover:bg-white/15"
+                }`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
       <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 space-y-3">
         <p className="text-sm font-black text-white">תעריפים שעתיים 💰</p>
         <div className="grid grid-cols-2 gap-3">
