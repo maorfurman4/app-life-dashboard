@@ -101,13 +101,20 @@ export function BarcodeScanner({ open, onClose, onDetected, onProductFound }: Ba
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-      <div className="flex items-center justify-between p-4 bg-black/80 text-white">
+      <div
+        className="flex items-center justify-between p-4 bg-black/80 text-white"
+        style={{ paddingTop: "max(2.75rem, calc(env(safe-area-inset-top) + 0.75rem))" }}
+      >
         <div className="flex items-center gap-2">
           <Camera className="h-5 w-5 text-nutrition" />
           <h3 className="text-sm font-bold">סריקת ברקוד</h3>
         </div>
-        <button onClick={onClose} className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center">
-          <X className="h-5 w-5" />
+        <button
+          onClick={onClose}
+          aria-label="סגור סריקה"
+          className="h-11 w-11 rounded-full bg-white/15 active:bg-white/25 flex items-center justify-center shrink-0"
+        >
+          <X className="h-6 w-6" />
         </button>
       </div>
 
@@ -232,9 +239,22 @@ export function BarcodeScanner({ open, onClose, onDetected, onProductFound }: Ba
         )}
       </div>
 
-      <div className="p-4 bg-black/80 text-white text-center text-xs">
-        {!scannedBarcode ? "כוון את הברקוד אל תוך המסגרת" : "ברקוד נסרק בהצלחה"}
-      </div>
+      {!product && !notFound && !error && (
+        <div
+          className="bg-black/80 text-white flex flex-col items-center gap-3 px-4 pt-3"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
+          <p className="text-center text-xs">
+            {!scannedBarcode ? "כוון את הברקוד אל תוך המסגרת" : "ברקוד נסרק בהצלחה"}
+          </p>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-2xl bg-white/10 active:bg-white/20 text-sm font-semibold min-h-[44px]"
+          >
+            ביטול
+          </button>
+        </div>
+      )}
     </div>
   );
 }
