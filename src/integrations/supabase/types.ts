@@ -1145,6 +1145,7 @@ export type Database = {
           income_sync_mode: string | null
           lunch_deduction: number | null
           national_insurance_pct: number | null
+          overtime_enabled: boolean | null
           pension_deduction_pct: number | null
           preferred_language: string | null
           recovery_per_hour: number | null
@@ -1200,6 +1201,7 @@ export type Database = {
           income_sync_mode?: string | null
           lunch_deduction?: number | null
           national_insurance_pct?: number | null
+          overtime_enabled?: boolean | null
           pension_deduction_pct?: number | null
           preferred_language?: string | null
           recovery_per_hour?: number | null
@@ -1255,6 +1257,7 @@ export type Database = {
           income_sync_mode?: string | null
           lunch_deduction?: number | null
           national_insurance_pct?: number | null
+          overtime_enabled?: boolean | null
           pension_deduction_pct?: number | null
           preferred_language?: string | null
           recovery_per_hour?: number | null

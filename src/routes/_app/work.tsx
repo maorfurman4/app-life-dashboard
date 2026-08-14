@@ -15,7 +15,7 @@ import {
 } from "@/hooks/use-work-data";
 import {
   calcShiftBreakdown, calcMonthlyPayslip, SHIFT_HOURS, SHIFT_LABELS, SHIFT_TIMES,
-  DEFAULT_PAYROLL_SETTINGS, type PayrollSettings, type ShiftRow,
+  DEFAULT_PAYROLL_SETTINGS, isShiftShabbat, type PayrollSettings, type ShiftRow,
 } from "@/lib/payroll-engine";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
@@ -102,7 +102,7 @@ function generateICS(shifts: ShiftRow[], monthLabel: string): string {
       "BEGIN:VEVENT",
       `DTSTART:${fmtDt(s.date, t.start)}`,
       `DTEND:${fmtDt(s.date, t.end, overnight)}`,
-      `SUMMARY:${esc(SHIFT_LABELS[s.type] ?? s.type)}${s.is_shabbat_holiday ? " (שבת)" : ""}`,
+      `SUMMARY:${esc(SHIFT_LABELS[s.type] ?? s.type)}${isShiftShabbat(s) ? " (שבת)" : ""}`,
       s.notes ? `DESCRIPTION:${esc(s.notes)}` : "DESCRIPTION:",
       "END:VEVENT"
     );
@@ -124,7 +124,7 @@ function exportCSV(shifts: ShiftRow[], settings: PayrollSettings, monthLabel: st
   const rows = shifts.map(s => {
     const bd    = calcShiftBreakdown(s, settings);
     const hours = s.hours ?? (SHIFT_HOURS[s.type] ?? 8);
-    return [s.date, SHIFT_LABELS[s.type] ?? s.type, hours, bd.totalGross.toFixed(2), s.is_shabbat_holiday ? "כן" : "לא", hasCoupon(s) ? "68" : "0"].join(",");
+    return [s.date, SHIFT_LABELS[s.type] ?? s.type, hours, bd.totalGross.toFixed(2), isShiftShabbat(s) ? "כן" : "לא", hasCoupon(s) ? "68" : "0"].join(",");
   });
   downloadBlob([header, ...rows].join("\n"), `משמרות-${monthLabel}.csv`, "text/csv;charset=utf-8");
   toast.success("קובץ CSV הורד");
@@ -143,7 +143,7 @@ function exportPayslipReport(
     const coupon = hasCoupon(s) ? 68 : 0;
     return `<tr>
       <td>${s.date}</td>
-      <td>${SHIFT_LABELS[s.type] ?? s.type}${s.is_shabbat_holiday ? " (שבת)" : ""}</td>
+      <td>${SHIFT_LABELS[s.type] ?? s.type}${isShiftShabbat(s) ? " (שבת)" : ""}</td>
       <td>${hours}ש׳</td>
       <td>${fmtNis(bd.totalGross)}</td>
       <td>${coupon > 0 ? fmtNis(coupon) : "—"}</td>
@@ -403,7 +403,7 @@ function ShiftTicket({ shift, settings, onDelete }: { shift: ShiftRow; settings:
   const hours = shift.hours ?? (SHIFT_HOURS[shift.type] ?? 8);
   const times = SHIFT_TIMES[shift.type] ?? { start: "—", end: "—" };
   const d     = new Date(shift.date);
-  const accent = shift.is_shabbat_holiday ? "#f59e0b" : (SHIFT_TYPE_COLORS[shift.type] ?? "#0ea5e9");
+  const accent = isShiftShabbat(shift) ? "#f59e0b" : (SHIFT_TYPE_COLORS[shift.type] ?? "#0ea5e9");
   const coupon = hasCoupon(shift) ? 68 : 0;
 
   return (
@@ -430,7 +430,7 @@ function ShiftTicket({ shift, settings, onDelete }: { shift: ShiftRow; settings:
           </p>
           <p className="text-3xl font-black text-white leading-none mt-0.5">{d.getDate()}</p>
           <p className="text-[9px] text-white/35 mt-0.5">{MONTHS_HE[d.getMonth()].slice(0, 3)}</p>
-          {shift.is_shabbat_holiday && (
+          {isShiftShabbat(shift) && (
             <span className="mt-1.5 text-[7px] px-1.5 py-0.5 rounded-full font-black"
               style={{ background: "#f59e0b18", color: "#f59e0b" }}>שבת</span>
           )}

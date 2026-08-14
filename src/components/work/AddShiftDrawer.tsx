@@ -200,10 +200,15 @@ export function AddShiftDrawer({ open, onClose }: AddShiftDrawerProps) {
             className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:border-work min-h-[44px]" />
         </div>
 
-        <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-card cursor-pointer min-h-[44px]">
-          <input type="checkbox" checked={isShabbat} onChange={(e) => setIsShabbat(e.target.checked)} className="accent-work h-4 w-4" />
-          <span className="text-sm font-medium">שבת / חג</span>
-        </label>
+        <div>
+          <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-card cursor-pointer min-h-[44px]">
+            <input type="checkbox" checked={isShabbat} onChange={(e) => setIsShabbat(e.target.checked)} className="accent-work h-4 w-4" />
+            <span className="text-sm font-medium">שבת / חג</span>
+          </label>
+          <p className="text-[11px] text-muted-foreground mt-1 px-1">
+            משמרות שחלות בשבת עצמה מזוהות אוטומטית — סמן כאן רק עבור חג, או אם ברצונך לעקוף את הזיהוי האוטומטי.
+          </p>
+        </div>
 
         <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-card cursor-pointer min-h-[44px]">
           <input type="checkbox" checked={hasBriefing} onChange={(e) => setHasBriefing(e.target.checked)} className="accent-work h-4 w-4" />

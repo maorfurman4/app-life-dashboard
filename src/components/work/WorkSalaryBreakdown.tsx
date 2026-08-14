@@ -64,6 +64,7 @@ export function WorkSalaryBreakdown({ payslip, isLoading }: WorkSalaryBreakdownP
             <Row label="הבראה" value={fmt(payslip.recovery)} />
             <Row label="תוספת מצוינות" value={fmt(payslip.excellence)} />
             {payslip.shabbatPay > 0 && <Row label="שעות שבת כולל שנ״ג" value={fmt(payslip.shabbatPay)} />}
+            {payslip.overtimePay > 0 && <Row label={`שעות נוספות (${payslip.overtimeHours} ש')`} value={fmt(payslip.overtimePay)} />}
             <Row label="נסיעות" value={fmt(payslip.travel)} />
             {payslip.briefingPay > 0 && <Row label="פ. תדרוך" value={fmt(payslip.briefingPay)} />}
             <div className="border-t border-border pt-1">
@@ -211,6 +212,9 @@ export function WorkSalaryBreakdown({ payslip, isLoading }: WorkSalaryBreakdownP
             <tr><td>תוספת מצוינות</td><td className="num">{(payslip?.excellence ?? 0).toFixed(2)}</td></tr>
             {(payslip?.shabbatPay ?? 0) > 0 && (
               <tr><td>שכר שבת / חג (150%)</td><td className="num">{(payslip?.shabbatPay ?? 0).toFixed(2)}</td></tr>
+            )}
+            {(payslip?.overtimePay ?? 0) > 0 && (
+              <tr><td>שעות נוספות ({payslip?.overtimeHours ?? 0} ש')</td><td className="num">{(payslip?.overtimePay ?? 0).toFixed(2)}</td></tr>
             )}
             <tr><td>נסיעות</td><td className="num">{(payslip?.travel ?? 0).toFixed(2)}</td></tr>
             {(payslip?.briefingPay ?? 0) > 0 && (
