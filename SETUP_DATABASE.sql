@@ -77,6 +77,7 @@ ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS harel_study_pct       
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS harel_travel_pct         NUMERIC     DEFAULT 5.00;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS extra_harel_pct          NUMERIC     DEFAULT 7.00;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS overtime_enabled         BOOLEAN     DEFAULT true;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS achmash_hourly_rate      NUMERIC     DEFAULT 52.80;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS income_sync_mode         TEXT        DEFAULT 'net';
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS savings_goal_pct         NUMERIC     DEFAULT 35;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS hidden_modules           JSONB       DEFAULT '[]'::jsonb;
@@ -621,7 +622,7 @@ ALTER TABLE public.work_shifts ADD  CONSTRAINT work_shifts_type_check
 -- Replace role constraint
 ALTER TABLE public.work_shifts DROP CONSTRAINT IF EXISTS work_shifts_role_check;
 ALTER TABLE public.work_shifts ADD  CONSTRAINT work_shifts_role_check
-  CHECK (role IN ('guard','shift_manager'));
+  CHECK (role IN ('guard','shift_manager','achmash'));
 
 DROP POLICY IF EXISTS "Users can view own shifts"   ON public.work_shifts;
 DROP POLICY IF EXISTS "Users can insert own shifts" ON public.work_shifts;

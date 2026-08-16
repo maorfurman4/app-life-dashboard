@@ -1115,6 +1115,7 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          achmash_hourly_rate: number | null
           alt_hourly_rate: number | null
           base_hourly_rate: number | null
           briefing_allowance: number | null
@@ -1171,6 +1172,7 @@ export type Database = {
           work_role: string | null
         }
         Insert: {
+          achmash_hourly_rate?: number | null
           alt_hourly_rate?: number | null
           base_hourly_rate?: number | null
           briefing_allowance?: number | null
@@ -1227,6 +1229,7 @@ export type Database = {
           work_role?: string | null
         }
         Update: {
+          achmash_hourly_rate?: number | null
           alt_hourly_rate?: number | null
           base_hourly_rate?: number | null
           briefing_allowance?: number | null

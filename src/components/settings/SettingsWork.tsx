@@ -36,6 +36,7 @@ export function SettingsWork() {
   const rateFields: { key: keyof PayrollSettings; label: string; unit: string }[] = [
     { key: "base_hourly_rate",    label: "שכר בסיס (שעתי)",      unit: "₪" },
     { key: "alt_hourly_rate",     label: "שכר אחראי (שעתי)",     unit: "₪" },
+    { key: "achmash_hourly_rate", label: "שכר אחמ\"ש (שעתי)",    unit: "₪" },
     { key: "recovery_per_hour",   label: "הבראה לשעה",            unit: "₪" },
     { key: "excellence_per_hour", label: "מצוינות לשעה",          unit: "₪" },
     { key: "shabbat_hourly_rate", label: "שבת לשעה",              unit: "₪" },

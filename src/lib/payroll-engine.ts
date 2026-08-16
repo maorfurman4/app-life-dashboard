@@ -3,6 +3,8 @@
 export interface PayrollSettings {
   base_hourly_rate: number;
   alt_hourly_rate: number;
+  /** Hourly rate for the 'achmash' role — a distinct shift type with its own (shifted) hours and pay */
+  achmash_hourly_rate: number;
   recovery_per_hour: number;
   excellence_per_hour: number;
   shabbat_hourly_rate: number;
@@ -70,6 +72,21 @@ export const SHIFT_TIMES: Record<string, { start: string; end: string }> = {
   sick_day: { start: '00:00', end: '00:00' },
 };
 
+/** אחמ"ש shifts run one hour earlier than the equivalent regular shift, same durations */
+export const ACHMASH_SHIFT_TIMES: Record<string, { start: string; end: string }> = {
+  morning: { start: '06:00', end: '14:00' },
+  afternoon: { start: '14:00', end: '22:00' },
+  night: { start: '22:00', end: '06:00' },
+  long_morning: { start: '06:00', end: '18:00' },
+  long_night: { start: '18:00', end: '06:00' },
+};
+
+/** Returns the shift's clock times, accounting for the role-specific (אחמ"ש) time shift */
+export function getShiftTimes(type: string, role?: string): { start: string; end: string } {
+  if (role === 'achmash' && ACHMASH_SHIFT_TIMES[type]) return ACHMASH_SHIFT_TIMES[type];
+  return SHIFT_TIMES[type] ?? { start: '—', end: '—' };
+}
+
 export interface ShiftBreakdown {
   basePay: number;
   recovery: number;
@@ -128,6 +145,7 @@ export interface MonthlyPayslip {
 export const DEFAULT_PAYROLL_SETTINGS: PayrollSettings = {
   base_hourly_rate: 52.80,
   alt_hourly_rate: 56.20,
+  achmash_hourly_rate: 52.80,
   recovery_per_hour: 1.51,
   excellence_per_hour: 3.17,
   shabbat_hourly_rate: 79.20,
@@ -197,7 +215,9 @@ export function calcShiftBreakdown(shift: ShiftRow, settings: PayrollSettings): 
   const isShabbat = isShiftShabbat(shift);
   const normalRate = shift.type === "manual_hourly"
     ? settings.base_hourly_rate
-    : shift.role === 'shift_manager' ? settings.alt_hourly_rate : settings.base_hourly_rate;
+    : shift.role === 'achmash' ? settings.achmash_hourly_rate
+    : shift.role === 'shift_manager' ? settings.alt_hourly_rate
+    : settings.base_hourly_rate;
   const rate = isShabbat ? settings.shabbat_hourly_rate : normalRate;
 
   const { regular, ot125, ot150 } = splitOvertimeHours(hours, settings.overtime_enabled);

@@ -7,11 +7,12 @@ import { useBatchAddShifts } from "@/hooks/use-work-data";
 import { X } from "lucide-react";
 import { haptics } from "@/lib/haptics";
 
-type WorkRole = "guard" | "shift_manager";
+type WorkRole = "guard" | "shift_manager" | "achmash";
 
 const ROLE_LABELS: Record<WorkRole, string> = {
   guard: "מאבטח רגיל",
   shift_manager: "אחראי משמרת",
+  achmash: 'אחמ"ש',
 };
 
 const SHIFT_TYPE_KEYS = Object.keys(SHIFT_LABELS).filter(k => k !== "manual_hourly");
@@ -135,7 +136,7 @@ export function BatchShiftDrawer({ open, onOpenChange }: BatchShiftDrawerProps) 
         {/* Role selector */}
         <div>
           <label className="text-xs font-medium text-muted-foreground mb-2 block">תפקיד</label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {(Object.keys(ROLE_LABELS) as WorkRole[]).map((key) => (
               <button
                 key={key}
