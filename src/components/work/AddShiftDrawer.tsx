@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { AddItemDrawer } from "@/components/shared/AddItemDrawer";
-import { SHIFT_LABELS, SHIFT_TIMES, SHIFT_HOURS, calcShiftBreakdown, DEFAULT_PAYROLL_SETTINGS } from "@/lib/payroll-engine";
+import { SHIFT_LABELS, SHIFT_HOURS, calcShiftBreakdown, getShiftTimes, DEFAULT_PAYROLL_SETTINGS } from "@/lib/payroll-engine";
 import { useAddShift, usePayrollSettings } from "@/hooks/use-work-data";
 import { useAddIncome } from "@/hooks/use-finance-data";
 import { todayLocalStr } from "@/utils/date";
@@ -8,11 +8,12 @@ import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
 
 type ShiftType = 'morning' | 'afternoon' | 'night' | 'long_morning' | 'long_night' | 'briefing' | 'manual_hourly';
-type WorkRole = 'guard' | 'shift_manager';
+type WorkRole = 'guard' | 'shift_manager' | 'achmash';
 
 const ROLE_LABELS: Record<WorkRole, string> = {
   guard: 'מאבטח רגיל',
   shift_manager: 'אחראי משמרת',
+  achmash: 'אחמ"ש',
 };
 
 interface AddShiftDrawerProps {
@@ -111,7 +112,7 @@ export function AddShiftDrawer({ open, onClose }: AddShiftDrawerProps) {
   const shiftEntries = (Object.keys(SHIFT_LABELS) as ShiftType[]).map((key) => ({
     key,
     label: key === "manual_hourly" ? "שעות ידניות 📝" : SHIFT_LABELS[key],
-    times: SHIFT_TIMES[key],
+    times: getShiftTimes(key, role),
   }));
 
   return (
@@ -182,7 +183,7 @@ export function AddShiftDrawer({ open, onClose }: AddShiftDrawerProps) {
 
         <div>
           <label className="text-xs font-medium text-muted-foreground mb-2 block">תפקיד</label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {(Object.keys(ROLE_LABELS) as WorkRole[]).map((key) => (
               <button key={key} onClick={() => setRole(key)}
                 className={`px-3 py-2.5 rounded-xl border transition-colors text-xs font-medium min-h-[44px] ${

@@ -14,7 +14,7 @@ import {
   useSavePayrollSettings, useArchiveWorkMonth, useWorkMonthHistory,
 } from "@/hooks/use-work-data";
 import {
-  calcShiftBreakdown, calcMonthlyPayslip, SHIFT_HOURS, SHIFT_LABELS, SHIFT_TIMES,
+  calcShiftBreakdown, calcMonthlyPayslip, SHIFT_HOURS, SHIFT_LABELS, getShiftTimes,
   DEFAULT_PAYROLL_SETTINGS, isShiftShabbat, type PayrollSettings, type ShiftRow,
 } from "@/lib/payroll-engine";
 import {
@@ -96,7 +96,7 @@ function generateICS(shifts: ShiftRow[], monthLabel: string): string {
   const esc = (s: string) => s.replace(/[,;\\]/g, "\\$&");
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Life Dashboard//Shifts//HE", "CALSCALE:GREGORIAN"];
   for (const s of shifts) {
-    const t = SHIFT_TIMES[s.type] ?? { start: "07:00", end: "15:00" };
+    const t = getShiftTimes(s.type, s.role) ?? { start: "07:00", end: "15:00" };
     const overnight = t.end < t.start;
     lines.push(
       "BEGIN:VEVENT",
@@ -401,7 +401,7 @@ function ShiftCard({ card, settings, onLog, onStart }: {
 function ShiftTicket({ shift, settings, onDelete }: { shift: ShiftRow; settings: PayrollSettings; onDelete?: (id: string) => void }) {
   const bd    = calcShiftBreakdown(shift, settings);
   const hours = shift.hours ?? (SHIFT_HOURS[shift.type] ?? 8);
-  const times = SHIFT_TIMES[shift.type] ?? { start: "—", end: "—" };
+  const times = getShiftTimes(shift.type, shift.role);
   const d     = new Date(shift.date);
   const accent = isShiftShabbat(shift) ? "#f59e0b" : (SHIFT_TYPE_COLORS[shift.type] ?? "#0ea5e9");
   const coupon = hasCoupon(shift) ? 68 : 0;
@@ -1147,6 +1147,7 @@ function SettingsTab({ settings }: { settings: PayrollSettings }) {
         <div className="grid grid-cols-2 gap-3">
           <Field label="שכר בסיס/שעה"         field="base_hourly_rate"    />
           <Field label="שכר חלופי/שעה"         field="alt_hourly_rate"     />
+          <Field label={'שכר אחמ"ש/שעה'}       field="achmash_hourly_rate" />
           <Field label="שכר שבת/שעה (150%)"    field="shabbat_hourly_rate" />
           <Field label="שיקום/שעה"             field="recovery_per_hour"   />
           <Field label="מצוינות/שעה"           field="excellence_per_hour" />

@@ -122,6 +122,7 @@ export function usePayrollSettings() {
         extra_harel_pct: data.extra_harel_pct ?? DEFAULT_PAYROLL_SETTINGS.extra_harel_pct,
         income_sync_mode: (data.income_sync_mode as 'net' | 'bank') ?? DEFAULT_PAYROLL_SETTINGS.income_sync_mode,
         overtime_enabled: data.overtime_enabled ?? DEFAULT_PAYROLL_SETTINGS.overtime_enabled,
+        achmash_hourly_rate: data.achmash_hourly_rate ?? DEFAULT_PAYROLL_SETTINGS.achmash_hourly_rate,
       } satisfies PayrollSettings;
     },
   });
