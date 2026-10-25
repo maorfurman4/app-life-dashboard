@@ -1,18 +1,10 @@
-import { useState } from "react";
-import { RefreshCw, TrendingUp } from "lucide-react";
-import { useExpenseEntries, useFinanceSettings } from "@/hooks/use-finance-data";
-import { generateText, parseAIJson } from "@/lib/ai-service";
+import { useMemo } from "react";
+import { TrendingUp } from "lucide-react";
+import { useMonthlyFinance } from "@/hooks/use-finance-data";
+import { forecastMonthEnd } from "@/lib/finance-utils";
 import { FT } from "@/lib/finance-theme";
 
 const fmt = (n: number) => n.toLocaleString("he-IL", { maximumFractionDigits: 0 });
-
-interface ForecastResult {
-  predictedMonthEnd: number;
-  topCategory: string;
-  topCategoryAmount: number;
-  status: "green" | "yellow" | "red";
-  summary: string;
-}
 
 function TrafficLight({ status }: { status: "green" | "yellow" | "red" | null }) {
   const colors = {
@@ -44,73 +36,39 @@ function TrafficLight({ status }: { status: "green" | "yellow" | "red" | null })
   );
 }
 
-function SkeletonForecast() {
-  return (
-    <div className="space-y-3 animate-pulse">
-      <div className="h-4 w-32 rounded-full" style={{ background: FT.brownDim }} />
-      <div className="h-16 rounded-2xl" style={{ background: FT.brownDim }} />
-      <div className="h-8 rounded-2xl" style={{ background: FT.brownDim }} />
-    </div>
-  );
-}
+const STATUS_TEXT = {
+  green: "בקצב הזה תעמוד ביעד החיסכון",
+  yellow: "בקצב הזה ההוצאות בתוך ההכנסה, אבל מתחת ליעד החיסכון",
+  red: "בקצב הזה ההוצאות יעברו את ההכנסה הצפויה",
+} as const;
 
+// Plain arithmetic on the month's own numbers — it used to be an AI call that never saw the income
 export function FinanceAIForecast() {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
+  const fin = useMonthlyFinance(year, month);
 
-  const { data: expenses, isLoading: expLoading } = useExpenseEntries(year, month);
-  const { data: settings } = useFinanceSettings();
-  const monthlyBudget = settings?.savings_goal_amount ?? null;
+  const forecast = useMemo(() => {
+    const debtMonthly = (fin.debts || []).reduce((s: number, d: any) => s + Number(d.monthly_payment), 0);
+    const { predicted, status } = forecastMonthEnd({
+      variableExpenses: fin.variableExpenses,
+      fixedMonthly: fin.totalFixedMonthly,
+      debtMonthly,
+      expectedIncome: fin.forecastBalance + fin.forecastExpenses,
+      savingsGoalPct: fin.savingsGoal,
+      daysElapsed: now.getDate(),
+      daysInMonth: fin.daysInMonth,
+    });
+    const byCategory: Record<string, number> = { ...fin.categoryBreakdown };
+    for (const f of fin.fixedExpenses || []) byCategory[f.category] = (byCategory[f.category] ?? 0) + Number(f.amount);
+    const [topCategory, topCategoryAmount] = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0] ?? ["—", 0];
+    return { predicted, status, topCategory, topCategoryAmount };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fin]);
 
-  const [forecast, setForecast] = useState<ForecastResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function runForecast() {
-    if (!expenses || expenses.length === 0) {
-      setError("אין נתוני הוצאות לחיזוי");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-
-    try {
-      const categoryTotals: Record<string, number> = {};
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (expenses as any[]).forEach((e) => {
-        categoryTotals[e.category] = (categoryTotals[e.category] ?? 0) + Number(e.amount);
-      });
-
-      const today = now.getDate();
-      const daysInMonth = new Date(year, month, 0).getDate();
-      const daysLeft = daysInMonth - today;
-
-      const prompt = `אתה יועץ פיננסי. ניתח את ההוצאות החודשיות הבאות (עד עכשיו, יום ${today} מתוך ${daysInMonth}) ותחזית לסוף החודש.
-
-הוצאות לפי קטגוריה (₪):
-${Object.entries(categoryTotals).map(([cat, amt]) => `- ${cat}: ₪${amt}`).join("\n")}
-
-נותרו ${daysLeft} ימים עד סוף החודש.
-
-החזר JSON בפורמט הבא בלבד (ללא טקסט נוסף):
-{
-  "predictedMonthEnd": <סכום כולל חזוי לסוף החודש (מספר)>,
-  "topCategory": "<קטגוריה עם הוצאה הגבוהה ביותר>",
-  "topCategoryAmount": <סכום הקטגוריה (מספר)>,
-  "status": "<green אם בשליטה, yellow אם צריך תשומת לב, red אם חריגה>",
-  "summary": "<משפט קצר בעברית על מצב ההוצאות>"
-}`;
-
-      const raw = await generateText(prompt);
-      const result = parseAIJson<ForecastResult>(raw);
-      setForecast(result);
-    } catch {
-      setError("שגיאה בקבלת תחזית AI");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const hasData = fin.variableExpenses > 0 || fin.totalFixedMonthly > 0;
+  const color = forecast.status === "red" ? FT.danger : forecast.status === "yellow" ? "#eab308" : FT.success;
 
   return (
     <div
@@ -118,67 +76,39 @@ ${Object.entries(categoryTotals).map(([cat, amt]) => `- ${cat}: ₪${amt}`).join
       style={{ background: FT.card, border: `1px solid ${FT.goldBorder}` }}
       dir="rtl"
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" style={{ color: FT.gold }} />
-          <p className="text-sm font-black" style={{ color: FT.gold, letterSpacing: 0 }}>תחזית הוצאות AI</p>
-        </div>
-        <button
-          onClick={runForecast}
-          disabled={loading || expLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-90 disabled:opacity-50"
-          style={{ background: FT.goldDim, border: `1px solid ${FT.goldBorder}`, color: FT.gold, letterSpacing: 0 }}
-        >
-          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
-          {forecast ? "רענן תחזית" : "הפעל תחזית"}
-        </button>
+      <div className="flex items-center gap-2 mb-3">
+        <TrendingUp className="h-4 w-4" style={{ color: FT.gold }} />
+        <p className="text-sm font-black" style={{ color: FT.gold, letterSpacing: 0 }}>תחזית הוצאות</p>
       </div>
 
-      {(loading || expLoading) && <SkeletonForecast />}
-
-      {error && !loading && (
-        <p className="text-xs text-center py-4" style={{ color: FT.danger, letterSpacing: 0 }}>{error}</p>
-      )}
-
-      {!forecast && !loading && !expLoading && !error && (
+      {!hasData ? (
         <p className="text-xs text-center py-4" style={{ color: FT.textFaint, letterSpacing: 0 }}>
-          לחץ על "הפעל תחזית" לניתוח AI של הוצאותיך
+          אין עדיין הוצאות החודש
         </p>
-      )}
-
-      {forecast && !loading && (
-        <div className="space-y-3 animate-in fade-in duration-300">
+      ) : (
+        <div className="space-y-3">
           <div className="flex items-center gap-4">
             <TrafficLight status={forecast.status} />
-
             <div className="flex-1">
               <p className="text-xs font-bold mb-1" style={{ color: FT.textMuted, letterSpacing: 0 }}>
                 לפי הקצב הנוכחי...
               </p>
-              <p
-                className="text-2xl font-black"
-                style={{
-                  color: forecast.status === "red" ? FT.danger : forecast.status === "yellow" ? "#eab308" : FT.success,
-                  letterSpacing: 0,
-                }}
-                dir="ltr"
-              >
-                ₪{fmt(forecast.predictedMonthEnd)}
+              <p className="text-2xl font-black" style={{ color, letterSpacing: 0 }} dir="ltr">
+                ₪{fmt(forecast.predicted)}
               </p>
               <p className="text-[10px] mt-0.5" style={{ color: FT.textFaint, letterSpacing: 0 }}>
-                תחזית הוצאות לסוף החודש
+                תחזית הוצאות לסוף החודש (כולל קבועות)
               </p>
             </div>
           </div>
 
-          <div
-            className="rounded-2xl p-3"
-            style={{ background: "rgba(0,0,0,0.25)", border: `1px solid ${FT.brownBorder}` }}
-          >
-            <p className="text-xs leading-relaxed" style={{ color: FT.textSub, letterSpacing: 0 }}>
-              {forecast.summary}
-            </p>
-          </div>
+          {forecast.status && (
+            <div className="rounded-2xl p-3" style={{ background: "rgba(0,0,0,0.25)", border: `1px solid ${FT.brownBorder}` }}>
+              <p className="text-xs leading-relaxed" style={{ color: FT.textSub, letterSpacing: 0 }}>
+                {STATUS_TEXT[forecast.status]} (יעד חיסכון {fin.savingsGoal}%).
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <p className="text-xs" style={{ color: FT.textMuted, letterSpacing: 0 }}>
@@ -188,18 +118,6 @@ ${Object.entries(categoryTotals).map(([cat, amt]) => `- ${cat}: ₪${amt}`).join
               ₪{fmt(forecast.topCategoryAmount)}
             </p>
           </div>
-
-          {monthlyBudget && (
-            <div
-              className="flex items-center justify-between pt-2"
-              style={{ borderTop: `1px solid ${FT.goldBorder}` }}
-            >
-              <p className="text-xs" style={{ color: FT.textMuted, letterSpacing: 0 }}>תקציב חודשי</p>
-              <p className="text-xs font-bold" style={{ color: FT.gold, letterSpacing: 0 }} dir="ltr">
-                ₪{fmt(monthlyBudget)}
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>
