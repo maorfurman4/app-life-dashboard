@@ -1,5 +1,7 @@
 // Israeli finance utilities — ILS formatting, VAT, debt projections
 
+import { localDateStr } from "@/utils/date";
+
 export const ILS = (n: number) =>
   n.toLocaleString("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 });
 
@@ -36,7 +38,7 @@ export function projectDebt(input: DebtInput): DebtProjection {
   const safePayment   = isFinite(monthly_payment) && monthly_payment > 0 ? monthly_payment : 0;
   const safeRate      = isFinite(annual_interest_rate) && annual_interest_rate >= 0 ? annual_interest_rate : 0;
   if (safePrincipal === 0 || safePayment === 0) {
-    return { remainingBalance: safePrincipal, monthsLeft: 0, endDate: new Date().toISOString().slice(0, 10), totalInterestPaid: 0, totalInterestRemaining: 0, totalCost: safePrincipal, payoffRoadmap: [] };
+    return { remainingBalance: safePrincipal, monthsLeft: 0, endDate: localDateStr(), totalInterestPaid: 0, totalInterestRemaining: 0, totalCost: safePrincipal, payoffRoadmap: [] };
   }
 
   const monthlyRate = safeRate / 100 / 12;
@@ -76,7 +78,7 @@ export function projectDebt(input: DebtInput): DebtProjection {
   return {
     remainingBalance: Math.round(balance),
     monthsLeft: months,
-    endDate: endDate.toISOString().slice(0, 10),
+    endDate: localDateStr(endDate),
     totalInterestPaid: Math.round(totalInterestPaid),
     totalInterestRemaining: Math.round(totalInterestRemaining),
     totalCost: Math.round(safePrincipal + totalInterestPaid + totalInterestRemaining),

@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -83,7 +84,7 @@ const PIE_COLORS = ["#0ea5e9", "#f59e0b", "#10b981", "#8b5cf6", "#f97316"];
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt2   = (n: number) => String(n).padStart(2, "0");
 const fmtNis = (n: number) => `₪${n.toLocaleString("he-IL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const today  = () => new Date().toISOString().slice(0, 10);
+const today  = () => localDateStr();
 const hasCoupon = (s: ShiftRow) => !!(s.notes?.includes("ארוחה +") || s.notes?.includes("נסיעות +"));
 
 // ─── ICS / Export helpers ─────────────────────────────────────────────────────

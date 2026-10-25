@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMonthlyPayslip } from "@/hooks/use-work-data";
@@ -152,6 +153,32 @@ export function useDeleteExpense() {
   });
 }
 
+export function useUpdateExpense() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...fields }: {
+      id: string;
+      amount: number;
+      category: string;
+      description: string | null;
+      date: string;
+      is_recurring: boolean;
+      currency: string;
+      exchange_rate: number;
+      original_amount: number | null;
+    }) => {
+      const { error } = await supabase.from("expense_entries").update(fields).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expense-entries", userId] });
+      qc.invalidateQueries({ queryKey: ["expense-history", userId] });
+    },
+  });
+}
+
 // ─── Income Entries ───
 export function useIncomeEntries(year: number, month: number) {
   const { user } = useAuth();
@@ -209,6 +236,28 @@ export function useDeleteIncome() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["income-entries", userId] }),
+  });
+}
+
+export function useUpdateIncome() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...fields }: {
+      id: string;
+      amount: number;
+      category: string;
+      description: string | null;
+      date: string;
+    }) => {
+      const { error } = await supabase.from("income_entries").update(fields).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["income-entries", userId] });
+      qc.invalidateQueries({ queryKey: ["income-history", userId] });
+    },
   });
 }
 
@@ -524,7 +573,7 @@ export function useExpenseHistory(months: number = 6) {
       const { data, error } = await supabase
         .from("expense_entries")
         .select("amount, category, date")
-        .gte("date", startDate.toISOString().slice(0, 10))
+        .gte("date", localDateStr(startDate))
         .order("date", { ascending: true });
       if (error) throw error;
       return data || [];
@@ -544,7 +593,7 @@ export function useIncomeHistory(months: number = 6) {
       const { data, error } = await supabase
         .from("income_entries")
         .select("amount, date")
-        .gte("date", startDate.toISOString().slice(0, 10))
+        .gte("date", localDateStr(startDate))
         .order("date", { ascending: true });
       if (error) throw error;
       return data || [];

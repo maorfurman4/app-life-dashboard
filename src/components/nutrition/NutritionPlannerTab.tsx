@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { useEffect, useMemo, useState } from "react";
 import { Sparkles, Save, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -347,7 +348,7 @@ If conditions are not nutrition-relevant or you are unsure, return adjustment_kc
                 </p>
                 <div className="flex gap-1.5">
                   {result.scenarios.map((s) => {
-                    const isoDate = new Date(Date.now() + s.weeks * 7 * 86_400_000).toISOString().split("T")[0];
+                    const isoDate = localDateStr(new Date(Date.now() + s.weeks * 7 * 86_400_000));
                     const isActive = targetDate === isoDate ||
                       (!targetDate && (
                         (s.delta === 250 && deficitLevel === "mild") ||

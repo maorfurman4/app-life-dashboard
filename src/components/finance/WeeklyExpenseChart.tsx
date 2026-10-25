@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { useState, useMemo } from "react";
 import {
   BarChart,
@@ -77,7 +78,7 @@ function buildWeekData(
   return Array.from({ length: 7 }, (_, i) => {
     const day = new Date(sunday);
     day.setDate(sunday.getDate() + i);
-    const key = day.toISOString().slice(0, 10);
+    const key = localDateStr(day);
     const dayEntries = entries.filter((e) => e.date === key);
     const total = dayEntries.reduce((s, e) => s + Number(e.amount), 0);
     const cats: Record<string, number> = {};

@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { ArrowUpRight, ArrowDownRight, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { AddExpenseDrawer } from "@/components/finance/AddExpenseDrawer";
@@ -12,6 +13,7 @@ export function FinanceTransactions() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
   const now = new Date();
   const fin = useMonthlyFinance(now.getFullYear(), now.getMonth() + 1);
   const deleteExpense = useDeleteExpense();
@@ -35,12 +37,13 @@ export function FinanceTransactions() {
     const w = getWeekNum(e.date);
     weeklyExpenses[w] = (weeklyExpenses[w] || 0) + Number(e.amount);
   });
-  const currentWeek = getWeekNum(new Date().toISOString().slice(0, 10));
+  const currentWeek = getWeekNum(localDateStr());
   const thisWeekTotal = weeklyExpenses[currentWeek] || 0;
 
   const displayed = showAll ? transactions : transactions.slice(0, 2);
 
   const handleDelete = (item: any) => {
+    if (!window.confirm(item._type === "expense" ? "למחוק את ההוצאה?" : "למחוק את ההכנסה?")) return;
     if (item._type === "expense") {
       deleteExpense.mutate(item.id, { onSuccess: () => toast.success("הוצאה נמחקה") });
     } else {
@@ -87,6 +90,7 @@ export function FinanceTransactions() {
         <div className="space-y-2">
           {displayed.map((item: any) => (
             <div key={item.id}
+              onClick={() => setEditingItem(item)}
               className="flex items-center justify-between px-3 py-2.5 rounded-2xl group transition-all duration-150 hover:bg-white/5 cursor-pointer"
               style={{ background: FT.cardLight, border: `1px solid ${FT.brownBorder}` }}>
               <div className="flex items-center gap-2 min-w-0">
@@ -112,10 +116,11 @@ export function FinanceTransactions() {
                     </p>
                   )}
                 </div>
-                <button onClick={() => handleDelete(item)}
-                  className="opacity-0 group-hover:opacity-100 transition-all p-1 rounded-lg active:scale-90"
+                <button onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+                  aria-label="מחק"
+                  className="h-8 w-8 flex items-center justify-center rounded-lg opacity-60 hover:opacity-100 transition-all active:scale-90"
                   style={{ color: FT.danger }}>
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
@@ -135,6 +140,12 @@ export function FinanceTransactions() {
 
       <AddExpenseDrawer open={expenseOpen} onClose={() => setExpenseOpen(false)} />
       <AddIncomeDrawer open={incomeOpen} onClose={() => setIncomeOpen(false)} />
+      {editingItem?._type === "expense" && (
+        <AddExpenseDrawer key={editingItem.id} open editing={editingItem} onClose={() => setEditingItem(null)} />
+      )}
+      {editingItem?._type === "income" && (
+        <AddIncomeDrawer key={editingItem.id} open editing={editingItem} onClose={() => setEditingItem(null)} />
+      )}
     </div>
   );
 }

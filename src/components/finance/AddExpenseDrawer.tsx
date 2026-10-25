@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, memo } from "react";
 import { AddItemDrawer } from "@/components/shared/AddItemDrawer";
-import { useAddExpense, DEFAULT_EXPENSE_CATEGORIES, useActiveExpenseCategories } from "@/hooks/use-finance-data";
+import { useAddExpense, useUpdateExpense, DEFAULT_EXPENSE_CATEGORIES, useActiveExpenseCategories } from "@/hooks/use-finance-data";
 import { AmountScrollPicker } from "./AmountScrollPicker";
 import { todayLocalStr } from "@/utils/date";
 import { toast } from "sonner";
@@ -9,6 +9,8 @@ import { haptics } from "@/lib/haptics";
 interface AddExpenseDrawerProps {
   open: boolean;
   onClose: () => void;
+  /** When set, the drawer edits this expense_entries row instead of adding a new one */
+  editing?: any;
 }
 
 const CategoryChip = memo(function CategoryChip({
@@ -50,7 +52,7 @@ async function fetchExchangeRate(currency: Currency): Promise<number> {
   return data.rates?.[currency] ?? 1;
 }
 
-export function AddExpenseDrawer({ open, onClose }: AddExpenseDrawerProps) {
+export function AddExpenseDrawer({ open, onClose, editing }: AddExpenseDrawerProps) {
   const [category, setCategory] = useState("מזון");
   const [customCategory, setCustomCategory] = useState("");
   const [amount, setAmount] = useState<number | null>(null);
@@ -62,6 +64,23 @@ export function AddExpenseDrawer({ open, onClose }: AddExpenseDrawerProps) {
   const [rateLoading, setRateLoading] = useState(false);
   const activeCategories = useActiveExpenseCategories();
   const addExpense = useAddExpense();
+  const updateExpense = useUpdateExpense();
+  const isSaving = addExpense.isPending || updateExpense.isPending;
+
+  // Load the row being edited each time the drawer opens on it
+  useEffect(() => {
+    if (!open || !editing) return;
+    const known = activeCategories.some((c) => c.name === editing.category);
+    setCategory(known ? editing.category : "אחר");
+    setCustomCategory(known ? "" : editing.category ?? "");
+    setCurrency((editing.currency as Currency) || "ILS");
+    setExchangeRate(Number(editing.exchange_rate) || 1);
+    setAmount(Number(editing.original_amount ?? editing.amount));
+    setDescription(editing.description ?? "");
+    setDate(editing.date);
+    setIsRecurring(!!editing.is_recurring);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editing?.id]);
 
   const handleCategorySelect = useCallback((name: string) => {
     haptics.tap();
@@ -77,14 +96,20 @@ export function AddExpenseDrawer({ open, onClose }: AddExpenseDrawerProps) {
       setExchangeRate(1);
       return;
     }
+    // Keep the rate the edited expense was saved with rather than re-quoting it
+    if (editing && currency === editing.currency) return;
+    let cancelled = false;
     setRateLoading(true);
     fetchExchangeRate(currency)
-      .then(setExchangeRate)
+      .then((rate) => { if (!cancelled) setExchangeRate(rate); })
       .catch(() => {
+        if (cancelled) return;
         toast.error("שגיאה בטעינת שער חליפין — השתמש בשער ידני");
         setExchangeRate(1);
       })
       .finally(() => setRateLoading(false));
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currency]);
 
   const ilsAmount = amount != null && exchangeRate > 0 ? amount / exchangeRate : null;
@@ -101,6 +126,27 @@ export function AddExpenseDrawer({ open, onClose }: AddExpenseDrawerProps) {
       return;
     }
     const amountILS = currency === "ILS" ? amount : amount / exchangeRate;
+
+    if (editing) {
+      updateExpense.mutate(
+        {
+          id: editing.id,
+          amount: amountILS,
+          category: effectiveCategory,
+          description: description || null,
+          date,
+          is_recurring: isRecurring,
+          currency,
+          exchange_rate: exchangeRate,
+          original_amount: currency !== "ILS" ? amount : null,
+        },
+        {
+          onSuccess: () => { haptics.success(); toast.success("הוצאה עודכנה"); onClose(); },
+          onError: (err) => toast.error("שגיאה בעדכון הוצאה: " + ((err as Error).message || "נסה שוב")),
+        }
+      );
+      return;
+    }
 
     addExpense.mutate(
       {
@@ -137,7 +183,7 @@ export function AddExpenseDrawer({ open, onClose }: AddExpenseDrawerProps) {
   };
 
   return (
-    <AddItemDrawer open={open} onClose={onClose} title="הוסף הוצאה">
+    <AddItemDrawer open={open} onClose={onClose} title={editing ? "ערוך הוצאה" : "הוסף הוצאה"}>
       <div className="space-y-4">
         <div>
           <label className="text-xs font-medium text-muted-foreground mb-2 block">קטגוריה</label>
@@ -236,9 +282,9 @@ export function AddExpenseDrawer({ open, onClose }: AddExpenseDrawerProps) {
           </button>
         </div>
 
-        <button onClick={handleSave} disabled={addExpense.isPending}
+        <button onClick={handleSave} disabled={isSaving}
           className="w-full py-3 rounded-xl bg-finance text-finance-foreground font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
-          {addExpense.isPending ? "שומר..." : "שמור הוצאה"}
+          {isSaving ? "שומר..." : editing ? "עדכן הוצאה" : "שמור הוצאה"}
         </button>
       </div>
     </AddItemDrawer>

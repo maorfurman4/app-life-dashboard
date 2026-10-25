@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +19,7 @@ interface Reminder {
 const DISMISS_KEY = "reminders-dismissed-date";
 
 function getTodayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateStr();
 }
 
 function getDismissed(): Set<string> {
