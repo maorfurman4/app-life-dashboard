@@ -138,6 +138,9 @@ export interface MonthlyPayslip {
   shabbatHours: number;
   overtimeHours: number;
   overtimePay: number;
+  // Meal vouchers — a separate voucher, never part of gross, net or the bank amount
+  couponCount: number;
+  couponTotal: number;
   briefingCount: number;
   travelCount: number;
 }
@@ -170,6 +173,13 @@ function getShiftHours(shift: ShiftRow): number {
 
 /** Shift types that receive no monetary compensation (tracked only) */
 const NON_PAID_TYPES = new Set(["vacation_day", "sick_day", "vacation", "sick"]);
+
+/** Meal voucher per shift whose notes record it ("ארוחה +68₪", legacy "נסיעות +68₪") */
+export const COUPON_AMOUNT = 68;
+
+export function hasCoupon(shift: Pick<ShiftRow, "notes">): boolean {
+  return !!(shift.notes?.includes("ארוחה +") || shift.notes?.includes("נסיעות +"));
+}
 
 const EMPTY_BREAKDOWN: ShiftBreakdown = {
   basePay: 0, recovery: 0, excellence: 0, shabbatPay: 0,
@@ -281,9 +291,11 @@ export function calcMonthlyPayslip(shifts: ShiftRow[], settings: PayrollSettings
   const healthInsurance = totalGross * (settings.health_insurance_pct / 100);
   const totalMandatory = nationalInsurance + healthInsurance;
 
-  // Office deductions (fixed amounts)
-  const lunchDeduction = settings.lunch_deduction;
-  const unionNational = settings.union_national_deduction;
+  // Office deductions (fixed amounts) — only in a month that has paid work
+  const paidShifts = shifts.filter(s => !NON_PAID_TYPES.has(s.type));
+  const lunchDeduction = paidShifts.length ? settings.lunch_deduction : 0;
+  const unionNational = paidShifts.length ? settings.union_national_deduction : 0;
+  const couponCount = paidShifts.filter(hasCoupon).length;
   const totalOffice = lunchDeduction + unionNational;
 
   // Pension/savings deductions (% of gross)
@@ -326,6 +338,8 @@ export function calcMonthlyPayslip(shifts: ShiftRow[], settings: PayrollSettings
     totalHours: r2(totalHours),
     shabbatHours: r2(shabbatHours),
     overtimeHours: r2(overtimeHours),
+    couponCount,
+    couponTotal: couponCount * COUPON_AMOUNT,
     briefingCount,
     travelCount: shifts.filter(s => !NON_PAID_TYPES.has(s.type) && s.type !== "manual_hourly").length,
   };

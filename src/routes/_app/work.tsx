@@ -16,7 +16,7 @@ import {
 } from "@/hooks/use-work-data";
 import {
   calcShiftBreakdown, calcMonthlyPayslip, SHIFT_HOURS, SHIFT_LABELS, getShiftTimes,
-  DEFAULT_PAYROLL_SETTINGS, isShiftShabbat, type PayrollSettings, type ShiftRow,
+  DEFAULT_PAYROLL_SETTINGS, isShiftShabbat, hasCoupon, COUPON_AMOUNT, type PayrollSettings, type ShiftRow,
 } from "@/lib/payroll-engine";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
@@ -85,7 +85,6 @@ const PIE_COLORS = ["#0ea5e9", "#f59e0b", "#10b981", "#8b5cf6", "#f97316"];
 const fmt2   = (n: number) => String(n).padStart(2, "0");
 const fmtNis = (n: number) => `₪${n.toLocaleString("he-IL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const today  = () => localDateStr();
-const hasCoupon = (s: ShiftRow) => !!(s.notes?.includes("ארוחה +") || s.notes?.includes("נסיעות +"));
 
 // ─── ICS / Export helpers ─────────────────────────────────────────────────────
 function generateICS(shifts: ShiftRow[], monthLabel: string): string {
@@ -125,7 +124,7 @@ function exportCSV(shifts: ShiftRow[], settings: PayrollSettings, monthLabel: st
   const rows = shifts.map(s => {
     const bd    = calcShiftBreakdown(s, settings);
     const hours = s.hours ?? (SHIFT_HOURS[s.type] ?? 8);
-    return [s.date, SHIFT_LABELS[s.type] ?? s.type, hours, bd.totalGross.toFixed(2), isShiftShabbat(s) ? "כן" : "לא", hasCoupon(s) ? "68" : "0"].join(",");
+    return [s.date, SHIFT_LABELS[s.type] ?? s.type, hours, bd.totalGross.toFixed(2), isShiftShabbat(s) ? "כן" : "לא", hasCoupon(s) ? String(COUPON_AMOUNT) : "0"].join(",");
   });
   downloadBlob([header, ...rows].join("\n"), `משמרות-${monthLabel}.csv`, "text/csv;charset=utf-8");
   toast.success("קובץ CSV הורד");
@@ -141,7 +140,7 @@ function exportPayslipReport(
   const rows = shifts.map(s => {
     const bd    = calcShiftBreakdown(s, settings);
     const hours = s.hours ?? (SHIFT_HOURS[s.type] ?? 8);
-    const coupon = hasCoupon(s) ? 68 : 0;
+    const coupon = hasCoupon(s) ? COUPON_AMOUNT : 0;
     return `<tr>
       <td>${s.date}</td>
       <td>${SHIFT_LABELS[s.type] ?? s.type}${isShiftShabbat(s) ? " (שבת)" : ""}</td>
@@ -198,10 +197,10 @@ function exportPayslipReport(
     ${payslip.shabbatPay > 0 ? `<div class="row"><span class="label">שבת / חג (150%)</span><span class="val">${fmtNis(payslip.shabbatPay)}</span></div>` : ""}
     <div class="row"><span class="label">נסיעות (${payslip.travelCount} משמרות)</span><span class="val">${fmtNis(payslip.travel)}</span></div>
     ${payslip.briefingPay > 0 ? `<div class="row"><span class="label">רענון</span><span class="val">${fmtNis(payslip.briefingPay)}</span></div>` : ""}
-    ${couponTotal > 0 ? `<div class="row"><span class="label">קופון נסיעות (הכנסה נוספת)</span><span class="val blue">+${fmtNis(couponTotal)}</span></div>` : ""}
+    ${couponTotal > 0 ? `<div class="row"><span class="label">קופוני ארוחה (שובר נפרד, לא בברוטו)</span><span class="val blue">+${fmtNis(couponTotal)}</span></div>` : ""}
     <div class="row" style="margin-top:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.15)">
       <span class="label" style="font-weight:700;color:#e2e8f0">ברוטו כולל</span>
-      <span class="gross">${fmtNis(payslip.totalGross + couponTotal)}</span>
+      <span class="gross">${fmtNis(payslip.totalGross)}</span>
     </div>
   </div>
 
@@ -222,7 +221,7 @@ function exportPayslipReport(
 
   <div class="section" style="text-align:center;padding:32px">
     <div style="font-size:13px;color:#64748b;margin-bottom:6px">נטו לבנק 💳</div>
-    <div class="net">${fmtNis(payslip.netPay + couponTotal)}</div>
+    <div class="net">${fmtNis(payslip.netPay)}</div>
   </div>
 
   <div class="section">
@@ -405,7 +404,7 @@ function ShiftTicket({ shift, settings, onDelete }: { shift: ShiftRow; settings:
   const times = getShiftTimes(shift.type, shift.role);
   const d     = new Date(shift.date);
   const accent = isShiftShabbat(shift) ? "#f59e0b" : (SHIFT_TYPE_COLORS[shift.type] ?? "#0ea5e9");
-  const coupon = hasCoupon(shift) ? 68 : 0;
+  const coupon = hasCoupon(shift) ? COUPON_AMOUNT : 0;
 
   return (
     <div className="relative rounded-3xl overflow-hidden border border-white/8 bg-white/[0.04] backdrop-blur-xl">
@@ -479,13 +478,11 @@ function ShiftTicket({ shift, settings, onDelete }: { shift: ShiftRow; settings:
 // ─── Adverse-inspired stats strip ────────────────────────────────────────────
 function StatsStrip({ shifts, settings }: { shifts: ShiftRow[]; settings: PayrollSettings }) {
   const payslip    = calcMonthlyPayslip(shifts, settings);
-  const couponTotal = shifts.filter(hasCoupon).length * 68;
-
   const stats = [
     { value: String(payslip.totalShifts), label: "משמרות" },
     { value: String(payslip.totalHours),  label: "שעות" },
-    { value: fmtNis(payslip.totalGross + couponTotal), label: "ברוטו", accent: "text-sky-300" },
-    { value: fmtNis(payslip.netPay + couponTotal),     label: "נטו",   accent: "text-emerald-300" },
+    { value: fmtNis(payslip.totalGross), label: "ברוטו", accent: "text-sky-300" },
+    { value: fmtNis(payslip.netPay),     label: "נטו",   accent: "text-emerald-300" },
   ];
 
   return (
@@ -813,18 +810,15 @@ function FinanceTab({ payslip, shifts, monthlyGoal, onGoalChange }: {
   const [editingGoal, setEditingGoal] = useState(false);
   const [goalInput, setGoalInput]     = useState(String(monthlyGoal));
 
-  // FIX 2: coupon income is separate from shift gross
-  const couponCount     = shifts.filter(hasCoupon).length;
-  const couponTotal     = couponCount * 68;
-  const totalWithCoupon = payslip.totalGross + couponTotal;
-  const targetPct       = Math.min(100, (totalWithCoupon / monthlyGoal) * 100);
+  // Meal vouchers are a separate voucher — shown on their own, never added to gross
+  const { couponCount, couponTotal } = payslip;
+  const targetPct       = Math.min(100, (payslip.totalGross / monthlyGoal) * 100);
 
   const pieData = [
     { name: "שכר בסיס",      value: Math.round(payslip.basePay + payslip.recovery + payslip.excellence) },
     { name: "שבת / חג",      value: Math.round(payslip.shabbatPay) },
     { name: "נסיעות",         value: Math.round(payslip.travel) },
     { name: "תוספות",         value: Math.round(payslip.briefingPay) },
-    ...(couponTotal > 0 ? [{ name: "קופון נסיעות", value: couponTotal }] : []),
   ].filter(d => d.value > 0);
 
   const deductionRows = [
@@ -867,7 +861,7 @@ function FinanceTab({ payslip, shifts, monthlyGoal, onGoalChange }: {
               style={{ width: `${targetPct}%`, background: targetPct >= 100 ? "#10b981" : targetPct >= 70 ? "#0ea5e9" : "#f59e0b" }} />
           </div>
           <div className="flex justify-between text-[10px] text-white/40">
-            <span>{fmtNis(totalWithCoupon)}</span>
+            <span>{fmtNis(payslip.totalGross)}</span>
             <span className={`font-black ${targetPct >= 100 ? "text-emerald-400" : "text-white/60"}`}>{targetPct.toFixed(0)}%</span>
             <span>{fmtNis(monthlyGoal)}</span>
           </div>
@@ -972,8 +966,7 @@ function ReportsTab({ shifts, settings, monthLabel }: {
   shifts: ShiftRow[]; settings: PayrollSettings; monthLabel: string;
 }) {
   const payslip    = calcMonthlyPayslip(shifts, settings);
-  const couponCount = shifts.filter(hasCoupon).length;
-  const couponTotal = couponCount * 68;
+  const { couponCount, couponTotal } = payslip;
 
   const handleICS = () => {
     if (shifts.length === 0) { toast.error("אין משמרות לייצוא"); return; }
@@ -1027,11 +1020,11 @@ function ReportsTab({ shifts, settings, monthLabel }: {
         <div className="px-4 pb-4 pt-3 flex gap-3 border-t border-white/8">
           <div className="flex-1 rounded-2xl border border-sky-500/20 bg-sky-500/8 p-3 text-center">
             <p className="text-[9px] text-white/35 mb-0.5">ברוטו חודש</p>
-            <p className="text-base font-black text-sky-300">{fmtNis(payslip.totalGross + couponTotal)}</p>
+            <p className="text-base font-black text-sky-300">{fmtNis(payslip.totalGross)}</p>
           </div>
           <div className="flex-1 rounded-2xl border border-emerald-500/20 bg-emerald-500/8 p-3 text-center">
             <p className="text-[9px] text-white/35 mb-0.5">נטו לבנק</p>
-            <p className="text-base font-black text-emerald-300">{fmtNis(payslip.netPay + couponTotal)}</p>
+            <p className="text-base font-black text-emerald-300">{fmtNis(payslip.netPay)}</p>
           </div>
         </div>
       </div>
@@ -1285,7 +1278,6 @@ function WorkPage() {
 
   const monthLabel  = `${MONTHS_HE[month - 1]} ${year}`;
   const payslip     = calcMonthlyPayslip(resolvedShifts, resolvedSettings);
-  const couponTotal = resolvedShifts.filter(hasCoupon).length * 68;
 
   return (
     <>
@@ -1339,7 +1331,7 @@ function WorkPage() {
             {/* Gross pill */}
             <div className="rounded-2xl border border-sky-500/20 bg-sky-500/8 backdrop-blur-xl px-3 py-2 text-center shrink-0">
               <p className="text-[9px] text-white/35 font-medium">ברוטו חודש</p>
-              <p className="text-sm font-black text-sky-300">{fmtNis(payslip.totalGross + couponTotal)}</p>
+              <p className="text-sm font-black text-sky-300">{fmtNis(payslip.totalGross)}</p>
             </div>
           </div>
 

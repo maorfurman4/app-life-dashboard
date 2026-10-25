@@ -3,6 +3,7 @@ import {
   calcShiftBreakdown,
   calcMonthlyPayslip,
   isShiftShabbat,
+  hasCoupon,
   DEFAULT_PAYROLL_SETTINGS,
   type PayrollSettings,
   type ShiftRow,
@@ -58,5 +59,40 @@ describe("payroll engine baseline", () => {
   it("monthly net equals gross minus deductions", () => {
     const p = calcMonthlyPayslip([shift({}), shift({ id: "s2", date: "2026-10-21" })], settings);
     expect(p.netPay).toBeCloseTo(p.totalGross - p.totalDeductions, 2);
+  });
+});
+
+describe("meal vouchers (separate from salary)", () => {
+  it("coupon total counts meal and travel notes", () => {
+    const p = calcMonthlyPayslip([
+      shift({ id: "a", notes: "ארוחה +68₪" }),
+      shift({ id: "b", date: "2026-10-21", notes: "ארוחה +68₪" }),
+      shift({ id: "c", date: "2026-10-22", notes: "נסיעות +68₪" }),
+    ], settings);
+    expect(p.couponCount).toBe(3);
+    expect(p.couponTotal).toBe(204);
+  });
+
+  it("coupons are not part of gross or net", () => {
+    const withCoupons = calcMonthlyPayslip([shift({ notes: "ארוחה +68₪" })], settings);
+    const without = calcMonthlyPayslip([shift({})], settings);
+    expect(withCoupons.totalGross).toBe(without.totalGross);
+    expect(withCoupons.netPay).toBe(without.netPay);
+  });
+
+  it("month with no shifts has zero coupons and zero net", () => {
+    const p = calcMonthlyPayslip([], { ...settings, lunch_deduction: 4 });
+    expect(p.couponTotal).toBe(0);
+    expect(p.netPay).toBe(0);
+  });
+
+  it("vacation day with a coupon note gets no coupon", () => {
+    const p = calcMonthlyPayslip([shift({ type: "vacation_day", notes: "ארוחה +68₪" })], settings);
+    expect(p.couponCount).toBe(0);
+  });
+
+  it("hasCoupon reads the shift notes", () => {
+    expect(hasCoupon({ notes: "ארוחה +68₪" })).toBe(true);
+    expect(hasCoupon({ notes: null })).toBe(false);
   });
 });
