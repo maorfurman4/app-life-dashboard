@@ -145,3 +145,16 @@ export function calcMonthsToPayoff(principal: number, annualRatePct: number, mon
   if (monthlyPayment <= monthlyInterest) return Infinity;
   return Math.ceil(Math.log(monthlyPayment / (monthlyPayment - monthlyInterest)) / Math.log(1 + r));
 }
+
+/**
+ * How many days of the given month (1-12) have elapsed as of `today`:
+ * a past month counts in full, the current month through today, a future month not at all.
+ * Fixed income/expenses with a day ≤ this value are already credited/charged for that month.
+ */
+export function accruedThroughDay(year: number, month: number, today: Date): number {
+  const viewed = year * 12 + month;
+  const current = today.getFullYear() * 12 + today.getMonth() + 1;
+  if (viewed < current) return new Date(year, month, 0).getDate();
+  if (viewed > current) return 0;
+  return today.getDate();
+}
