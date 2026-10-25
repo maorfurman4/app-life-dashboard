@@ -2,12 +2,27 @@ name: Supabase Keepalive
 
 on:
   schedule:
-    - cron: "0 6 */4 * *"   # every 4 days — prevents Supabase free-tier auto-pause from inactivity
+    - cron: "0 6 * * *"   # daily — free-tier projects pause after 7 days without DB activity
   workflow_dispatch:
+
+permissions:
+  actions: write   # lets the job re-enable itself (see last step)
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://oglhuhnppdlekviodkjb.supabase.co
+      # Public anon key — the same one shipped in the browser bundle; RLS returns [] to it.
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nbGh1aG5wcGRsZWt2aW9ka2piIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0Nzg4ODAsImV4cCI6MjA5MjA1NDg4MH0.P1KcpPc6Er7wHyD2OcMv2zURL-LocTDe9xPz5p7sBrU
     steps:
-      - name: Ping Supabase project
-        run: curl -sS -o /dev/null -w "HTTP %{http_code}\n" --max-time 15 "https://oglhuhnppdlekviodkjb.supabase.co/rest/v1/"
+      # A bare /rest/v1/ ping without apikey returns 401 and is not counted as activity — run a real query.
+      - name: Query Supabase
+        run: |
+          curl -sS --fail --max-time 20 -o /dev/null -w "HTTP %{http_code}\n" "$SUPABASE_URL/rest/v1/user_profile?select=id&limit=1" -H "apikey: $SUPABASE_ANON_KEY"
+
+      # GitHub disables scheduled workflows after 60 days without commits; re-enabling resets that timer.
+      - name: Keep this workflow enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable supabase-keepalive.yml --repo "$GITHUB_REPOSITORY"
