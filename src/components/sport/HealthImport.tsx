@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
@@ -81,8 +82,8 @@ function parseGoogleFitJSON(jsonText: string): ParseResult {
         for (const point of dataset.point ?? []) {
           const tsNs = point.startTimeNanos ? BigInt(point.startTimeNanos) : BigInt(0);
           const date = tsNs > BigInt(0)
-            ? new Date(Number(tsNs / BigInt(1000000))).toISOString().slice(0, 10)
-            : new Date().toISOString().slice(0, 10);
+            ? localDateStr(new Date(Number(tsNs / BigInt(1000000))))
+            : localDateStr();
 
           if (src.includes("activity.segment")) {
             workouts.push({
@@ -121,7 +122,7 @@ function parseCSV(csvText: string): ParseResult {
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(",").map((c) => c.trim());
-    const date = dateIdx >= 0 ? (cols[dateIdx] ?? "").slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const date = dateIdx >= 0 ? (cols[dateIdx] ?? "").slice(0, 10) : localDateStr();
 
     if (stepIdx >= 0 || calIdx >= 0 || durationIdx >= 0) {
       const cal = calIdx >= 0 ? parseFloat(cols[calIdx]) : undefined;

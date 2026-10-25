@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
@@ -6301,7 +6302,7 @@ function BodyProgressGallery() {
   const [newFile,    setNewFile]    = useState<File | null>(null);
   const [newPreview, setNewPreview] = useState<string | null>(null);
   const [notes,      setNotes]      = useState("");
-  const [photoDate,  setPhotoDate]  = useState(() => new Date().toISOString().slice(0, 10));
+  const [photoDate,  setPhotoDate]  = useState(() => localDateStr());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -6338,7 +6339,7 @@ function BodyProgressGallery() {
       const dateFormatted = new Date(photoDate + "T12:00:00").toLocaleDateString("he-IL", { day: "numeric", month: "numeric", year: "2-digit" });
       toast.success(`📸 תמונה נשמרה — ${lbl} · ${dateFormatted}`);
       setNewFile(null); setNewPreview(null); setNotes("");
-      setPhotoDate(new Date().toISOString().slice(0, 10));
+      setPhotoDate(localDateStr());
     } catch {/* handled in hook */}
   };
 
@@ -6434,7 +6435,7 @@ function BodyProgressGallery() {
               <input
                 type="date"
                 value={photoDate}
-                max={new Date().toISOString().slice(0, 10)}
+                max={localDateStr()}
                 onChange={(e) => setPhotoDate(e.target.value)}
                 className="rounded-2xl border border-violet-500/30 bg-violet-500/10 px-3 py-2.5 text-sm text-violet-200 outline-none focus:border-violet-500/60 transition-all w-36 [color-scheme:dark]"
               />

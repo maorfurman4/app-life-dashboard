@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -96,7 +97,7 @@ export function useAddWorkout() {
           duration_minutes: workout.duration_minutes || null,
           calories_burned: workout.calories_burned || null,
           notes: workout.notes || null,
-          date: workout.date || new Date().toISOString().slice(0, 10),
+          date: workout.date || localDateStr(),
           template_id: workout.template_id || null,
         } as any)
         .select("id")
@@ -133,11 +134,15 @@ export function useAddWorkout() {
 
       return workoutRow;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["workouts", userId] });
-      qc.invalidateQueries({ queryKey: ["workouts-week", userId] });
-    },
+    onSuccess: () => invalidateWorkoutQueries(qc, userId),
   });
+}
+
+// Every view derived from the workouts table — history, streak and volume included — must refresh together
+function invalidateWorkoutQueries(qc: ReturnType<typeof useQueryClient>, userId: string | undefined) {
+  for (const key of ["workouts", "workouts-week", "workout-history", "workout-streak", "weekly-volume", "run-history"]) {
+    qc.invalidateQueries({ queryKey: [key, userId] });
+  }
 }
 
 export function useDeleteWorkout() {
@@ -149,10 +154,7 @@ export function useDeleteWorkout() {
       const { error } = await supabase.from("workouts").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["workouts", userId] });
-      qc.invalidateQueries({ queryKey: ["workouts-week", userId] });
-    },
+    onSuccess: () => invalidateWorkoutQueries(qc, userId),
   });
 }
 
@@ -168,11 +170,7 @@ export function useUpdateWorkout() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["workouts", userId] });
-      qc.invalidateQueries({ queryKey: ["workouts-week", userId] });
-      qc.invalidateQueries({ queryKey: ["workout-history", userId] });
-    },
+    onSuccess: () => invalidateWorkoutQueries(qc, userId),
   });
 }
 
@@ -209,7 +207,7 @@ export function useWorkoutStreak() {
       const { data, error } = await supabase
         .from("workouts")
         .select("date")
-        .gte("date", ninetyDaysAgo.toISOString().slice(0, 10))
+        .gte("date", localDateStr(ninetyDaysAgo))
         .order("date", { ascending: false });
       if (error) throw error;
 
@@ -351,7 +349,7 @@ export function useAddWeight() {
   return useMutation({
     mutationFn: async (entry: { weight_kg: number; date?: string; notes?: string }) => {
       const uid = await getUserId();
-      const date = entry.date || new Date().toISOString().slice(0, 10);
+      const date = entry.date || localDateStr();
       // upsert: if entry exists for this date, update weight instead of failing
       const { error } = await supabase.from("weight_entries").upsert(
         { user_id: uid, weight_kg: entry.weight_kg, date, notes: entry.notes || null },
@@ -481,7 +479,7 @@ export function useAddBodyProgress() {
         photo_url: path,
         angle,
         notes:     notes || null,
-        date:      date || new Date().toISOString().slice(0, 10),
+        date:      date || localDateStr(),
       });
       if (dbErr) {
         await supabase.storage.from("body-progress").remove([path]);
@@ -763,7 +761,7 @@ export function useAddPersonalRecord() {
         value: pr.value,
         unit: pr.unit || "reps",
         category: pr.category || "calisthenics",
-        date: pr.date || new Date().toISOString().slice(0, 10),
+        date: pr.date || localDateStr(),
         notes: pr.notes || null,
       });
       if (error) throw error;
@@ -817,7 +815,7 @@ export function useWeeklyVolume(weeksBack = 8) {
         .from("workouts")
         .select("date, workout_exercises(weight_kg, reps, sets)")
         .eq("user_id", uid)
-        .gte("date", cutoff.toISOString().slice(0, 10))
+        .gte("date", localDateStr(cutoff))
         .order("date", { ascending: true });
       if (error) throw error;
 

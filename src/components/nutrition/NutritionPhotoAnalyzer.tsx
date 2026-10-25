@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { useState, useRef } from "react";
 import { ScanSearch, Loader2, AlertTriangle, FolderOpen, Star, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ export function NutritionPhotoAnalyzer() {
   const galleryRef = useRef<HTMLInputElement>(null);
   const addNutrition = useAddNutrition();
   const addFavorite  = useAddFavoriteMeal();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

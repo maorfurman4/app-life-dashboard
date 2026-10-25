@@ -1,3 +1,4 @@
+import { localDateStr } from "@/utils/date";
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, ScanLine } from "lucide-react";
@@ -36,7 +37,7 @@ export function AddPayslipDrawer({ open, onClose }: AddPayslipDrawerProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(localDateStr().slice(0, 7));
   const [grossActual, setGrossActual] = useState("");
   const [netActual, setNetActual] = useState("");
   const [unionActual, setUnionActual] = useState("");

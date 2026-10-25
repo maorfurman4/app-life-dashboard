@@ -2,11 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import {
   Camera, ImageIcon, PenLine, Pencil, Droplets, Check, X as XIcon,
-  X, Plus, UtensilsCrossed, Loader2,
+  X, Plus, UtensilsCrossed, Loader2, Trash2,
 } from "lucide-react";
 import {
   useNutritionEntries, useUserSettings, useWaterEntry,
-  useAddWaterMl, useUpsertWater,
+  useAddWaterMl, useUpsertWater, useDeleteNutrition,
 } from "@/hooks/use-sport-data";
 import { AddMealDrawer } from "@/components/nutrition/AddMealDrawer";
 import { NutritionPlannerTab } from "@/components/nutrition/NutritionPlannerTab";
@@ -151,6 +151,15 @@ function NutritionPage() {
   const { data: waterEntry } = useWaterEntry();
   const addWaterMl  = useAddWaterMl();
   const upsertWater = useUpsertWater();
+  const deleteMeal  = useDeleteNutrition();
+  const [showAllMeals, setShowAllMeals] = useState(false);
+
+  const handleDeleteMeal = (id: string) => {
+    deleteMeal.mutate(id, {
+      onSuccess: () => toast.success("ארוחה נמחקה"),
+      onError:   () => toast.error("שגיאה במחיקה"),
+    });
+  };
 
   const handleWaterManualSave = () => {
     const ml = Math.round(Number(waterInputVal));
@@ -452,21 +461,34 @@ function NutritionPage() {
                 </p>
               ) : (
                 <div className="divide-y divide-white/5">
-                  {meals.slice(0, 5).map((m) => (
+                  {(showAllMeals ? meals : meals.slice(0, 5)).map((m) => (
                     <div key={m.id} className="flex items-center justify-between py-2 gap-2">
                       <span className="text-sm text-white/90 font-medium truncate min-w-0">
                         {m.name}
                       </span>
-                      <div className="flex gap-2 text-[10px] text-white/40 shrink-0">
+                      <div className="flex items-center gap-2 text-[10px] text-white/40 shrink-0">
                         {m.calories  != null && <span>{m.calories}קל׳</span>}
                         {m.protein_g != null && <span>{m.protein_g}g P</span>}
+                        <button
+                          onClick={() => handleDeleteMeal(m.id)}
+                          disabled={deleteMeal.isPending && deleteMeal.variables === m.id}
+                          aria-label={`מחק ${m.name}`}
+                          className="h-8 w-8 rounded-xl flex items-center justify-center text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-all disabled:opacity-40"
+                        >
+                          {deleteMeal.isPending && deleteMeal.variables === m.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Trash2  className="h-3.5 w-3.5" />}
+                        </button>
                       </div>
                     </div>
                   ))}
                   {(meals?.length ?? 0) > 5 && (
-                    <p className="text-center text-white/25 text-[10px] pt-2">
-                      +{meals!.length - 5} ארוחות נוספות
-                    </p>
+                    <button
+                      onClick={() => setShowAllMeals((v) => !v)}
+                      className="w-full text-center text-white/40 text-[10px] pt-2"
+                    >
+                      {showAllMeals ? "הצג פחות" : `+${meals!.length - 5} ארוחות נוספות`}
+                    </button>
                   )}
                 </div>
               )}

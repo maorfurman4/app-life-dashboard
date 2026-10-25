@@ -7,6 +7,8 @@ import {
   useDeleteExpense,
   useDeleteIncome,
 } from "@/hooks/use-finance-data";
+import { AddExpenseDrawer } from "@/components/finance/AddExpenseDrawer";
+import { AddIncomeDrawer } from "@/components/finance/AddIncomeDrawer";
 import { FT } from "@/lib/finance-theme";
 import { toast } from "sonner";
 
@@ -256,8 +258,8 @@ function DonutChart({
 
 // ─── Transaction Row ──────────────────────────────────────────────────────────
 
-function TransactionRow({ item, isAnomaly, onDelete }: {
-  item: any; isAnomaly: boolean; onDelete?: () => void;
+function TransactionRow({ item, isAnomaly, onDelete, onEdit }: {
+  item: any; isAnomaly: boolean; onDelete?: () => void; onEdit?: () => void;
 }) {
   const isFixed = item._type === "fixed";
   const isExpense = item._type === "expense";
@@ -265,7 +267,8 @@ function TransactionRow({ item, isAnomaly, onDelete }: {
 
   return (
     <div
-      className="flex items-center gap-3 px-3 py-2.5 rounded-2xl group transition-all"
+      onClick={onEdit}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl group transition-all ${onEdit ? "cursor-pointer" : ""}`}
       style={{
         background: isAnomaly ? "rgba(212,178,100,0.08)" : FT.cardLight,
         border: `1px solid ${isAnomaly ? "rgba(212,178,100,0.22)" : isFixed ? "rgba(139,170,255,0.15)" : FT.brownBorder}`,
@@ -314,7 +317,7 @@ function TransactionRow({ item, isAnomaly, onDelete }: {
       {/* Delete — only for variable expenses and income */}
       {onDelete && (
         <button
-          onClick={onDelete}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
           className="h-7 w-7 rounded-lg flex items-center justify-center transition-all shrink-0 active:scale-90"
           style={{ background: FT.dangerDim, color: FT.danger }}
           aria-label="מחק"
@@ -336,6 +339,7 @@ export function FinanceHistoryTab({ year, month }: { year: number; month: number
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const transactionsRef = useRef<HTMLDivElement>(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
 
   const searchFilter = parseSearch(search);
 
@@ -380,6 +384,7 @@ export function FinanceHistoryTab({ year, month }: { year: number; month: number
   }
 
   function handleDelete(item: any) {
+    if (!window.confirm(item._type === "expense" ? "למחוק את ההוצאה?" : "למחוק את ההכנסה?")) return;
     if (item._type === "expense") {
       deleteExpense.mutate(item.id, { onSuccess: () => toast.success("הוצאה נמחקה") });
     } else if (item._type === "income") {
@@ -494,6 +499,7 @@ export function FinanceHistoryTab({ year, month }: { year: number; month: number
                 item={item}
                 isAnomaly={anomalyIds.has(item.id)}
                 onDelete={item._type !== "fixed" ? () => handleDelete(item) : undefined}
+                onEdit={item._type !== "fixed" ? () => setEditingItem(item) : undefined}
               />
             ))}
           </div>
@@ -531,6 +537,13 @@ export function FinanceHistoryTab({ year, month }: { year: number; month: number
           ייצוא PDF
         </button>
       </div>
+
+      {editingItem?._type === "expense" && (
+        <AddExpenseDrawer key={editingItem.id} open editing={editingItem} onClose={() => setEditingItem(null)} />
+      )}
+      {editingItem?._type === "income" && (
+        <AddIncomeDrawer key={editingItem.id} open editing={editingItem} onClose={() => setEditingItem(null)} />
+      )}
     </div>
   );
 }
