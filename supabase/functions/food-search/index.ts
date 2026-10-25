@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { modelParams } from "../_shared/openai.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,8 +52,7 @@ async function translateToHebrew(names: string[]): Promise<string[]> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        // Model: gpt-4o-mini — used for simple text translation (food names)
-        model: "gpt-4o-mini",
+        ...modelParams("fast", 600),
         messages: [
           {
             role: "system",
@@ -118,9 +118,7 @@ async function estimateWithAI(query: string): Promise<FoodResult[]> {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        // Model: gpt-4o-mini — used for simple nutritional estimation (short response)
-        model: "gpt-4o-mini",
-        max_tokens: 200,
+        ...modelParams("smart", 600),
         messages: [
           {
             role: "system",

@@ -158,3 +158,25 @@ export function accruedThroughDay(year: number, month: number, today: Date): num
   if (viewed > current) return 0;
   return today.getDate();
 }
+
+export type ForecastStatus = "green" | "yellow" | "red";
+
+/**
+ * End-of-month spending at the current pace: variable spending so far scaled to the full month,
+ * plus fixed costs and debt payments. Traffic light: green = savings goal kept,
+ * yellow = within income, red = over income, null = no expected income to compare with.
+ */
+export function forecastMonthEnd(p: {
+  variableExpenses: number; fixedMonthly: number; debtMonthly: number; expectedIncome: number;
+  savingsGoalPct: number; daysElapsed: number; daysInMonth: number;
+}): { predicted: number; status: ForecastStatus | null } {
+  const predicted = Math.round(
+    (p.variableExpenses / Math.max(p.daysElapsed, 1)) * p.daysInMonth + p.fixedMonthly + p.debtMonthly,
+  );
+  if (p.expectedIncome <= 0) return { predicted, status: null };
+  const status: ForecastStatus =
+    predicted <= p.expectedIncome * (1 - p.savingsGoalPct / 100) ? "green"
+    : predicted <= p.expectedIncome ? "yellow"
+    : "red";
+  return { predicted, status };
+}

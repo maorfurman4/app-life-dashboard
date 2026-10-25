@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { modelParams } from "../_shared/openai.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -273,9 +274,7 @@ ${libraryBlock ? `\nספריית התרגילים הזמינה (שם | שריר�
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        // Model: gpt-4o — used for complex multi-week workout plan generation with periodization
-        model: "gpt-4o",
-        max_tokens: 8000,
+        ...modelParams("smart", 16000, "low"),
         messages: [
           { role: "system", content: systemMessage },
           { role: "user", content: userPrompt },

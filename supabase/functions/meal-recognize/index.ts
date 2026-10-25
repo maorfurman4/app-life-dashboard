@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { modelParams, type Effort } from "../_shared/openai.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -187,83 +188,89 @@ Deno.serve(async (req) => {
       ? imageBase64
       : `data:image/jpeg;base64,${imageBase64}`;
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 25_000);
+    // One recognition attempt; gpt-5-mini with "minimal" reasoning is ~10× cheaper than gpt-4o
+    const analyze = async (effort: Effort): Promise<Response | Record<string, unknown>> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 25_000);
+      console.log(`[${requestId}] calling openai effort=${effort}`);
+      const tFetch = Date.now();
 
-    console.log(`[${requestId}] calling openai model=gpt-4o`);
-    const tFetch = Date.now();
-
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      signal: controller.signal,
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        // Model: gpt-4o — used for vision analysis (meal photo recognition)
-        model: "gpt-4o",
-        max_tokens: 1000,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: [
-              { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
-              { type: "text", text: "Analyze this food image and call report_meal with your findings." },
-            ],
-          },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "report_meal",
-            description: "Report the identified meal with nutritional data in Hebrew",
-            parameters: {
-              type: "object",
-              properties: {
-                meal_name:  { type: "string",  description: "שם האוכל בעברית" },
-                calories:   { type: "number",  description: "קלוריות כוללות" },
-                protein_g:  { type: "number",  description: "חלבון בגרמים" },
-                carbs_g:    { type: "number",  description: "פחמימות בגרמים" },
-                fat_g:      { type: "number",  description: "שומן בגרמים" },
-                confidence: { type: "string",  enum: ["high", "medium", "low"] },
-                no_food:       { type: "boolean", description: "true only when absolutely no food is visible" },
-                portion_grams: { type: "number",  description: "total estimated gram weight of all food combined" },
-              },
-              required: ["meal_name", "calories", "protein_g", "carbs_g", "fat_g", "confidence", "no_food"],
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        signal: controller.signal,
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...modelParams("smart", effort === "minimal" ? 1500 : 4000, effort),
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: [
+                { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
+                { type: "text", text: "Analyze this food image and call report_meal with your findings." },
+              ],
             },
-          },
-        }],
-        tool_choice: { type: "function", function: { name: "report_meal" } },
-      }),
-    }).finally(() => clearTimeout(timer));
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "report_meal",
+              description: "Report the identified meal with nutritional data in Hebrew",
+              parameters: {
+                type: "object",
+                properties: {
+                  meal_name:  { type: "string",  description: "שם האוכל בעברית" },
+                  calories:   { type: "number",  description: "קלוריות כוללות" },
+                  protein_g:  { type: "number",  description: "חלבון בגרמים" },
+                  carbs_g:    { type: "number",  description: "פחמימות בגרמים" },
+                  fat_g:      { type: "number",  description: "שומן בגרמים" },
+                  confidence: { type: "string",  enum: ["high", "medium", "low"] },
+                  no_food:       { type: "boolean", description: "true only when absolutely no food is visible" },
+                  portion_grams: { type: "number",  description: "total estimated gram weight of all food combined" },
+                },
+                required: ["meal_name", "calories", "protein_g", "carbs_g", "fat_g", "confidence", "no_food"],
+              },
+            },
+          }],
+          tool_choice: { type: "function", function: { name: "report_meal" } },
+        }),
+      }).finally(() => clearTimeout(timer));
 
-    const fetchMs = Date.now() - tFetch;
-    console.log(`[${requestId}] openai responded status=${res.status} ms=${fetchMs}`);
+      console.log(`[${requestId}] openai responded status=${res.status} ms=${Date.now() - tFetch}`);
 
-    if (!res.ok) {
-      const t = await res.text();
-      console.error(`[${requestId}] openai error status=${res.status} body=${t}`);
-      if (res.status === 429) return errResponse("יותר מדי בקשות, נסה שוב בעוד דקה", 429);
-      return errResponse(`שגיאת AI (${res.status})`, 502);
+      if (!res.ok) {
+        const t = await res.text();
+        console.error(`[${requestId}] openai error status=${res.status} body=${t}`);
+        if (res.status === 429) return errResponse("יותר מדי בקשות, נסה שוב בעוד דקה", 429);
+        return errResponse(`שגיאת AI (${res.status})`, 502);
+      }
+
+      const data     = await res.json();
+      const usage    = data?.usage;
+      const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
+
+      if (!toolCall) {
+        console.error(`[${requestId}] no tool call in response`);
+        return errResponse("תגובת AI לא תקינה — נסה שנית");
+      }
+
+      try {
+        const parsed = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
+        console.log(`[${requestId}] parsed=${JSON.stringify(parsed)} tokens=${usage?.total_tokens ?? "?"} total_ms=${Date.now() - t0}`);
+        return parsed;
+      } catch {
+        console.error(`[${requestId}] JSON parse failed args=${toolCall.function.arguments}`);
+        return errResponse("תגובת AI לא תקינה — נסה שנית");
+      }
+    };
+
+    let result = await analyze("minimal");
+    // Without reasoning the model occasionally names the food but reports 0 kcal — retry that once with reasoning
+    if (!(result instanceof Response) && !result.no_food && !(Number(result.calories) > 0)) {
+      result = await analyze("low");
     }
-
-    const data     = await res.json();
-    const usage    = data?.usage;
-    const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
-
-    if (!toolCall) {
-      console.error(`[${requestId}] no tool call in response`);
-      return errResponse("תגובת AI לא תקינה — נסה שנית");
-    }
-
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(toolCall.function.arguments);
-    } catch {
-      console.error(`[${requestId}] JSON parse failed args=${toolCall.function.arguments}`);
-      return errResponse("תגובת AI לא תקינה — נסה שנית");
-    }
-
-    console.log(`[${requestId}] parsed=${JSON.stringify(parsed)} tokens=${usage?.total_tokens ?? "?"} total_ms=${Date.now() - t0}`);
+    if (result instanceof Response) return result;
+    const parsed = result;
 
     if (parsed.no_food) {
       return errResponse("לא זוהה מזון בתמונה — נסה תמונה ברורה יותר", 422);

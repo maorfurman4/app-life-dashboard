@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { modelParams } from "../_shared/openai.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,6 +40,8 @@ Deno.serve(async (req) => {
     const { prompt, imageBase64, mimeType } = body;
 
     if (!prompt) return errResponse("prompt is required", 400);
+    // The app's longest prompt template is ~1k chars plus user data — anything far larger is not ours
+    if (typeof prompt !== "string" || prompt.length > 12_000) return errResponse("prompt too long", 413);
     if (imageBase64 && imageBase64.length > 5_000_000) return errResponse("התמונה גדולה מדי — הקטן אותה ונסה שוב", 413);
 
     const apiKey = Deno.env.get("OPENAI_API_KEY");
@@ -64,11 +67,8 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        // Model: gpt-4o for vision tasks, gpt-4o-mini for simple text generation
-        model: isVision ? "gpt-4o" : "gpt-4o-mini",
-        max_tokens: isVision ? 800 : 2500,
+        ...modelParams("smart", isVision ? 1500 : 4000),
         messages: [{ role: "user", content }],
-        temperature: isVision ? 0.1 : 0.3,
       }),
     }).finally(() => clearTimeout(timer));
 

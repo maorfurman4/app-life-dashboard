@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { modelParams } from "../_shared/openai.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,8 +97,7 @@ ${budgetText}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
-        max_tokens: 4000,
+        ...modelParams("smart", 12000, "low"),
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemMessage },
