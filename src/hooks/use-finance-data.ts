@@ -5,6 +5,7 @@ import { useMonthlyPayslip } from "@/hooks/use-work-data";
 import { useAuth } from "@/hooks/use-auth";
 import { useMemo } from "react";
 import { toast } from "sonner";
+import { accruedThroughDay } from "@/lib/finance-utils";
 
 // ─── Auth helper ───
 async function getUserId() {
@@ -464,10 +465,12 @@ export function useMonthlyFinance(year: number, month: number) {
     // Fixed income (active, already credited this month)
     const today = new Date();
     const currentDay = today.getDate();
+    // Past months count every fixed item; the current month only those due by today; future months none
+    const accruedDay = accruedThroughDay(year, month, today);
     const activeFixedIncome = (fixedIncome || []).filter((f: any) => f.is_active);
     const totalFixedIncomeMonthly = activeFixedIncome.reduce((sum: number, f: any) => sum + Number(f.amount), 0);
     const fixedIncomeAlreadyCredited = activeFixedIncome
-      .filter((f: any) => f.day_of_month <= currentDay)
+      .filter((f: any) => f.day_of_month <= accruedDay)
       .reduce((sum: number, f: any) => sum + Number(f.amount), 0);
 
     const totalIncome = workIncome + manualIncome + fixedIncomeAlreadyCredited;
@@ -479,13 +482,14 @@ export function useMonthlyFinance(year: number, month: number) {
     const activeFixed = (fixedExpenses || []).filter((f: any) => f.is_active);
     const totalFixedMonthly = activeFixed.reduce((sum: number, f: any) => sum + Number(f.amount), 0);
     const fixedAlreadyCharged = activeFixed
-      .filter((f: any) => f.charge_day <= currentDay)
+      .filter((f: any) => f.charge_day <= accruedDay)
       .reduce((sum: number, f: any) => sum + Number(f.amount), 0);
     const fixedRemaining = totalFixedMonthly - fixedAlreadyCharged;
 
     // Debt monthly payments (auto-deducted)
     const activeDebts = (debts || []).filter((d: any) => d.is_active !== false);
-    const totalDebtMonthly = activeDebts.reduce((sum: number, d: any) => sum + Number(d.monthly_payment), 0);
+    const monthlyDebtPayment = activeDebts.reduce((sum: number, d: any) => sum + Number(d.monthly_payment), 0);
+    const totalDebtMonthly = accruedDay > 0 ? monthlyDebtPayment : 0;
 
     const totalExpenses = variableExpenses + fixedAlreadyCharged + totalDebtMonthly;
     const balance = totalIncome - totalExpenses;
@@ -497,7 +501,7 @@ export function useMonthlyFinance(year: number, month: number) {
     const savingsGap = savingsTarget - savings;
 
     // Forecast (full month)
-    const forecastExpenses = variableExpenses + totalFixedMonthly + totalDebtMonthly;
+    const forecastExpenses = variableExpenses + totalFixedMonthly + monthlyDebtPayment;
     const forecastIncome = workIncome + manualIncome + totalFixedIncomeMonthly;
     const forecastBalance = forecastIncome - forecastExpenses;
     const forecastSavingsPct = forecastIncome > 0 ? (forecastBalance / forecastIncome) * 100 : 0;
