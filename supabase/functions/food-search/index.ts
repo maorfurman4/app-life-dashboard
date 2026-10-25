@@ -122,7 +122,7 @@ async function estimateWithAI(query: string): Promise<FoodResult[]> {
         messages: [
           {
             role: "system",
-            content: `Return per-100g nutritional values for the food item the user names.
+            content: `Return per-100g nutritional values for the FRESH/RAW version of the food item the user names (not pickled, not processed, not canned — the natural whole food).
 Respond with ONLY a JSON object: { "name_he": "<Hebrew name>", "calories": <number>, "protein": <number>, "carbs": <number>, "fat": <number> }
 Use USDA standard values. No markdown, no explanation.`,
           },
